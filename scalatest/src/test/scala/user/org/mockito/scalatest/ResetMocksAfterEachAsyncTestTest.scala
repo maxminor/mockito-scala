@@ -5,13 +5,15 @@ import org.mockito.scalatest.ResetMocksAfterEachAsyncTest
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AsyncWordSpec
 
+import scala.concurrent.Future
+
 class ResetMocksAfterEachAsyncTestTest extends AsyncWordSpec with MockitoSugar with ResetMocksAfterEachAsyncTest with Matchers {
   trait Foo {
-    def bar(a: String) = "bar"
+    def bar(a: String) = Future.successful("bar")
   }
 
   trait Baz {
-    def qux(a: String) = "qux"
+    def qux(a: String) = Future.successful("qux")
   }
 
   val foo: Foo = mock[Foo]
@@ -21,37 +23,43 @@ class ResetMocksAfterEachAsyncTestTest extends AsyncWordSpec with MockitoSugar w
     "have clean state for test 1" in {
       verifyZeroInteractions(foo)
 
-      when(foo.bar("pepe")) thenReturn "mocked"
+      when(foo.bar("pepe")) thenReturn Future.successful("mocked")
 
-      foo.bar("pepe") shouldBe "mocked"
+      foo.bar("pepe").map { f =>
+        f shouldBe "mocked"
+      }
     }
 
     "have clean state for test 2" in {
       verifyZeroInteractions(foo)
 
-      when(foo.bar("pepe")) thenReturn "mocked2"
+      when(foo.bar("pepe")) thenReturn Future.successful("mocked2")
 
-      foo.bar("pepe") shouldBe "mocked2"
+      foo.bar("pepe").map { f =>
+        f shouldBe "mocked2"
+      }
     }
 
     "have clean state for all mocks test 1" in {
       verifyZeroInteractions(foo, baz)
 
-      when(foo.bar("pepe")) thenReturn "mocked3"
-      when(baz.qux("epep")) thenReturn "mocked4"
+      when(foo.bar("pepe")) thenReturn Future.successful("mocked3")
+      when(baz.qux("epep")) thenReturn Future.successful("mocked4")
 
-      foo.bar("pepe") shouldBe "mocked3"
-      baz.qux("epep") shouldBe "mocked4"
+      Future.sequence(List(foo.bar("pepe"), baz.qux("epep"))).map { f =>
+        f should contain theSameElementsAs List("mocked3", "mocked4")
+      }
     }
 
     "have clean state for all mocks test 2" in {
       verifyZeroInteractions(foo, baz)
 
-      when(foo.bar("pepe")) thenReturn "mocked5"
-      when(baz.qux("epep")) thenReturn "mocked6"
+      when(foo.bar("pepe")) thenReturn Future.successful("mocked5")
+      when(baz.qux("epep")) thenReturn Future.successful("mocked6")
 
-      foo.bar("pepe") shouldBe "mocked5"
-      baz.qux("epep") shouldBe "mocked6"
+      Future.sequence(List(foo.bar("pepe"), baz.qux("epep"))).map { f =>
+        f should contain theSameElementsAs List("mocked5", "mocked6")
+      }
     }
   }
 }
